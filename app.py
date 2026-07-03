@@ -19,15 +19,13 @@ st.set_page_config(
 @st.cache_resource(ttl=300)
 def get_connection():
     cfg = st.secrets["snowflake"]
-    private_key_pem = cfg["private_key"].encode()
-    private_key = load_pem_private_key(
-        private_key_pem,
-        password=None,
-        backend=default_backend(),
-    )
+    import base64
     from cryptography.hazmat.primitives.serialization import (
-        Encoding, PrivateFormat, NoEncryption
+        load_der_private_key, Encoding, PrivateFormat, NoEncryption
     )
+    # private_key in secrets is the raw base64 DER (no PEM headers)
+    key_der = base64.b64decode(cfg["private_key"])
+    private_key = load_der_private_key(key_der, password=None, backend=default_backend())
     private_key_der = private_key.private_bytes(
         encoding=Encoding.DER,
         format=PrivateFormat.PKCS8,

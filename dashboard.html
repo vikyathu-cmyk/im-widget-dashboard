@@ -1,0 +1,670 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>IM_DEDICATED Widget Dashboard</title>
+<script src="https://cdn.plot.ly/plotly-2.32.0.min.js"></script>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  :root{
+    --bg:#0E1117;--card:#1A1D27;--border:#2A2D3A;
+    --orange:#FC8019;--blue:#3D9BFF;--green:#00E5A0;--gold:#FFD700;
+    --text:#FAFAFA;--muted:#8B8FA8;
+    --font:'Inter',system-ui,-apple-system,sans-serif;
+  }
+  body{background:var(--bg);color:var(--text);font-family:var(--font);min-height:100vh}
+
+  /* ── Layout ── */
+  .layout{display:flex;min-height:100vh}
+  .sidebar{width:240px;flex-shrink:0;background:var(--card);border-right:1px solid var(--border);
+    padding:20px 16px;display:flex;flex-direction:column;gap:16px;position:sticky;top:0;height:100vh;overflow-y:auto}
+  .main{flex:1;padding:24px 28px;overflow-x:hidden}
+
+  /* ── Sidebar ── */
+  .logo{font-size:13px;font-weight:700;letter-spacing:.5px;color:var(--orange);
+    padding-bottom:12px;border-bottom:1px solid var(--border)}
+  .logo span{display:block;font-size:11px;color:var(--muted);font-weight:400;margin-top:2px}
+  .sidebar label{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px;display:block}
+  .sidebar input[type=date],.sidebar select{
+    width:100%;background:#12151E;border:1px solid var(--border);color:var(--text);
+    border-radius:6px;padding:7px 10px;font-size:13px;outline:none}
+  .sidebar select[multiple]{height:140px}
+  .btn-refresh{
+    width:100%;padding:9px;background:var(--orange);color:#fff;border:none;
+    border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;transition:.15s}
+  .btn-refresh:hover{background:#e06a0a}
+  .sidebar-note{font-size:11px;color:var(--muted);line-height:1.5}
+
+  /* ── Header ── */
+  .page-header{margin-bottom:20px}
+  .page-title{font-size:22px;font-weight:700;color:var(--text)}
+  .page-sub{font-size:13px;color:var(--muted);margin-top:4px}
+
+  /* ── KPI strip ── */
+  .kpi-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:12px;margin-bottom:24px}
+  @media(max-width:1200px){.kpi-grid{grid-template-columns:repeat(3,1fr)}}
+  .kpi{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:16px 14px}
+  .kpi-label{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:6px}
+  .kpi-value{font-size:22px;font-weight:700;color:var(--text)}
+  .kpi-value.orange{color:var(--orange)}
+  .kpi-value.blue{color:var(--blue)}
+  .kpi-value.green{color:var(--green)}
+
+  /* ── Tabs ── */
+  .tabs{display:flex;gap:2px;border-bottom:1px solid var(--border);margin-bottom:20px;overflow-x:auto}
+  .tab{padding:10px 18px;font-size:13px;font-weight:500;color:var(--muted);cursor:pointer;
+    border-bottom:2px solid transparent;transition:.15s;white-space:nowrap}
+  .tab.active{color:var(--orange);border-bottom-color:var(--orange)}
+  .tab:hover:not(.active){color:var(--text)}
+  .tab-panel{display:none}
+  .tab-panel.active{display:block}
+
+  /* ── Cards / charts ── */
+  .card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:20px;margin-bottom:20px}
+  .card-title{font-size:14px;font-weight:600;margin-bottom:16px;color:var(--text)}
+  .chart-row{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px}
+  @media(max-width:900px){.chart-row{grid-template-columns:1fr}}
+
+  /* ── Table ── */
+  .tbl-wrap{overflow-x:auto}
+  table{width:100%;border-collapse:collapse;font-size:12px}
+  th{background:#12151E;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;
+    padding:9px 12px;text-align:left;position:sticky;top:0}
+  td{padding:9px 12px;border-bottom:1px solid var(--border)}
+  tr:hover td{background:#1f2233}
+  .badge{display:inline-block;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:600}
+  .badge-orange{background:rgba(252,128,25,.15);color:var(--orange)}
+  .badge-blue{background:rgba(61,155,255,.15);color:var(--blue)}
+  .badge-green{background:rgba(0,229,160,.15);color:var(--green)}
+
+  /* ── Radio row ── */
+  .radio-row{display:flex;gap:8px;margin-bottom:12px}
+  .radio-row label{display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer;
+    background:#12151E;border:1px solid var(--border);border-radius:6px;padding:5px 12px}
+  .radio-row input{accent-color:var(--orange)}
+
+  /* ── Search ── */
+  .search-box{background:#12151E;border:1px solid var(--border);color:var(--text);
+    border-radius:6px;padding:8px 14px;font-size:13px;width:300px;outline:none;margin-bottom:14px}
+  .download-btn{padding:8px 18px;background:transparent;border:1px solid var(--border);
+    color:var(--muted);border-radius:6px;font-size:12px;cursor:pointer;margin-bottom:14px}
+  .download-btn:hover{border-color:var(--orange);color:var(--orange)}
+
+  /* ── Divider ── */
+  hr{border:none;border-top:1px solid var(--border);margin:16px 0}
+</style>
+</head>
+<body>
+<div class="layout">
+
+<!-- ── SIDEBAR ─────────────────────────────────────────── -->
+<aside class="sidebar">
+  <div class="logo">
+    IM_DEDICATED<br>Widget Dashboard
+    <span>de_tag = 'IM_DEDICATED'</span>
+  </div>
+
+  <div>
+    <label>Start Date</label>
+    <input type="date" id="startDate"/>
+  </div>
+  <div>
+    <label>End Date</label>
+    <input type="date" id="endDate"/>
+  </div>
+
+  <div>
+    <label>Filter Cities</label>
+    <select id="cityFilter" multiple></select>
+  </div>
+  <div>
+    <label>Filter Widgets</label>
+    <select id="widgetFilter" multiple></select>
+  </div>
+
+  <button class="btn-refresh" onclick="applyFilters()">🔄 Apply Filters</button>
+
+  <hr/>
+  <div class="sidebar-note">
+    Data source:<br>
+    <code style="color:var(--orange);font-size:10px">STREAMS.PUBLIC.<br>DP_DE_SUPER_APP_EVENT</code>
+    <br/><br/>
+    Auto-refreshes every<br>30 min when page is open.
+  </div>
+</aside>
+
+<!-- ── MAIN ────────────────────────────────────────────── -->
+<main class="main">
+
+  <div class="page-header">
+    <div class="page-title">📊 IM_DEDICATED Widget Performance</div>
+    <div class="page-sub" id="dateRangeLabel"></div>
+  </div>
+
+  <!-- KPIs -->
+  <div class="kpi-grid">
+    <div class="kpi"><div class="kpi-label">Total Impressions</div><div class="kpi-value orange" id="kpi-imp">—</div></div>
+    <div class="kpi"><div class="kpi-label">Total Clicks</div><div class="kpi-value blue" id="kpi-clk">—</div></div>
+    <div class="kpi"><div class="kpi-label">Overall CTR</div><div class="kpi-value green" id="kpi-ctr">—</div></div>
+    <div class="kpi"><div class="kpi-label">Unique Impressions</div><div class="kpi-value" id="kpi-uimp">—</div></div>
+    <div class="kpi"><div class="kpi-label">Unique CTR</div><div class="kpi-value" id="kpi-uctr">—</div></div>
+    <div class="kpi"><div class="kpi-label">Cities / Widgets</div><div class="kpi-value" id="kpi-cw">—</div></div>
+  </div>
+
+  <!-- Tabs -->
+  <div class="tabs">
+    <div class="tab active" onclick="switchTab('trend',this)">📈 Daily Trend</div>
+    <div class="tab" onclick="switchTab('widget',this)">🧩 Widget Level</div>
+    <div class="tab" onclick="switchTab('position',this)">📍 Position Level</div>
+    <div class="tab" onclick="switchTab('city',this)">🏙️ City Level</div>
+    <div class="tab" onclick="switchTab('raw',this)">🗃️ Raw Data</div>
+  </div>
+
+  <!-- Tab: Daily Trend -->
+  <div class="tab-panel active" id="panel-trend">
+    <div class="card">
+      <div class="card-title">Daily Impressions & Clicks</div>
+      <div id="chart-trend-main" style="height:360px"></div>
+    </div>
+    <div class="card">
+      <div class="card-title">Daily Unique Impressions & Unique CTR</div>
+      <div id="chart-trend-unique" style="height:360px"></div>
+    </div>
+  </div>
+
+  <!-- Tab: Widget Level -->
+  <div class="tab-panel" id="panel-widget">
+    <div class="chart-row">
+      <div class="card">
+        <div class="card-title">Top Widgets by Impressions (colour = CTR %)</div>
+        <div id="chart-widget-imp" style="height:440px"></div>
+      </div>
+      <div class="card">
+        <div class="card-title">Top Widgets by CTR % (colour = Clicks)</div>
+        <div id="chart-widget-ctr" style="height:440px"></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">Widget Daily Trend</div>
+      <div class="radio-row">
+        <label><input type="radio" name="wmetric" value="impressions" checked onchange="drawWidgetTrend()"> Impressions</label>
+        <label><input type="radio" name="wmetric" value="clicks" onchange="drawWidgetTrend()"> Clicks</label>
+      </div>
+      <div id="chart-widget-trend" style="height:340px"></div>
+    </div>
+    <div class="card">
+      <div class="card-title">Widget Summary Table</div>
+      <div class="tbl-wrap"><table id="tbl-widget"></table></div>
+    </div>
+  </div>
+
+  <!-- Tab: Position Level -->
+  <div class="tab-panel" id="panel-position">
+    <div class="chart-row">
+      <div class="card">
+        <div class="card-title">Impressions by Position (colour = CTR %)</div>
+        <div id="chart-pos-imp" style="height:360px"></div>
+      </div>
+      <div class="card">
+        <div class="card-title">CTR (%) by Position</div>
+        <div id="chart-pos-ctr" style="height:360px"></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">Widget × Position Heatmap (Impressions)</div>
+      <div id="chart-pos-heat" style="height:480px"></div>
+    </div>
+    <div class="card">
+      <div class="card-title">Position Summary Table</div>
+      <div class="tbl-wrap"><table id="tbl-pos"></table></div>
+    </div>
+  </div>
+
+  <!-- Tab: City Level -->
+  <div class="tab-panel" id="panel-city">
+    <div class="chart-row">
+      <div class="card">
+        <div class="card-title">Top 20 Cities by Impressions (colour = CTR %)</div>
+        <div id="chart-city-imp" style="height:560px"></div>
+      </div>
+      <div class="card">
+        <div class="card-title">Top 20 Cities by CTR % (colour = Clicks)</div>
+        <div id="chart-city-ctr" style="height:560px"></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">City Daily Trend</div>
+      <div class="radio-row">
+        <label><input type="radio" name="cmetric" value="impressions" checked onchange="drawCityTrend()"> Impressions</label>
+        <label><input type="radio" name="cmetric" value="clicks" onchange="drawCityTrend()"> Clicks</label>
+        <label><input type="radio" name="cmetric" value="ctr_pct" onchange="drawCityTrend()"> CTR %</label>
+      </div>
+      <div id="chart-city-trend" style="height:340px"></div>
+    </div>
+    <div class="card">
+      <div class="card-title">City Summary Table</div>
+      <div class="tbl-wrap"><table id="tbl-city"></table></div>
+    </div>
+  </div>
+
+  <!-- Tab: Raw Data -->
+  <div class="tab-panel" id="panel-raw">
+    <div class="card">
+      <div class="card-title">Raw Query Results</div>
+      <input class="search-box" id="rawSearch" placeholder="Search widget or city…" oninput="renderRaw()"/>
+      <button class="download-btn" onclick="downloadCSV()">⬇ Download CSV</button>
+      <div class="tbl-wrap"><table id="tbl-raw"></table></div>
+    </div>
+  </div>
+
+</main>
+</div>
+
+<script>
+// ── Synthetic data based on observed Snowflake schema ─────────────────────────
+// Generated to match real widget names, cities and patterns seen in query results.
+// Replace window.RAW_DATA with a fetch() to your own API endpoint for live data.
+
+const WIDGETS = [
+  "IM_RB_SUM_48000","IM_RB_SUM_40500","IM_RB_SUM_32000","IM_RB_SUM_24000",
+  "IM_SWIGGY_MERCH_STORE","IM_RAINCOAT","IM_HELMET_OFFER","IM_REFERRAL_BONUS",
+  "SF_PERSONAL_LOANS","SF_E_SHRAM","SF_ACT_INCENTIVE_KNOWHOW","SF_HEALTH_INS",
+  "IM_INSTAMART_BONUS","IM_DAILY_TARGET","IM_WEEKLY_STREAK","IM_PEAK_BONUS"
+];
+const CITIES = [
+  "Bangalore","Hyderabad","Mumbai","Delhi","Chennai","Pune",
+  "Kolkata","Ahmedabad","Jaipur","Surat","Lucknow","Kochi",
+  "Chandigarh","Indore","Nagpur","Coimbatore","Bhopal","Vizag"
+];
+const LINKS = {
+  "IM_RB_SUM_48000":"https://ride.swiggy.com/roadrunner/de-home/referral-nav",
+  "IM_RB_SUM_40500":"https://ride.swiggy.com/roadrunner/de-home/referral-nav",
+  "IM_RB_SUM_32000":"https://ride.swiggy.com/roadrunner/de-home/referral-nav",
+  "IM_RB_SUM_24000":"https://ride.swiggy.com/roadrunner/de-home/referral-nav",
+  "IM_SWIGGY_MERCH_STORE":"https://ride.swiggy.com/roadrunner/merch-store",
+  "IM_RAINCOAT":"https://ride.swiggy.com/merch-store",
+  "IM_HELMET_OFFER":"https://ride.swiggy.com/merch-store",
+  "IM_REFERRAL_BONUS":"https://ride.swiggy.com/roadrunner/de-home/referral-nav",
+  "SF_PERSONAL_LOANS":"https://api.jify.co/redirect/play-store",
+  "SF_E_SHRAM":"https://register.eshram.gov.in/#/user/platform-worker-registration",
+  "SF_ACT_INCENTIVE_KNOWHOW":"https://ride.swiggy.com/localized-video-player",
+  "SF_HEALTH_INS":"https://ride.swiggy.com/health-insurance",
+  "IM_INSTAMART_BONUS":"https://ride.swiggy.com/instamart-bonus",
+  "IM_DAILY_TARGET":"https://ride.swiggy.com/daily-target",
+  "IM_WEEKLY_STREAK":"https://ride.swiggy.com/weekly-streak",
+  "IM_PEAK_BONUS":"https://ride.swiggy.com/peak-bonus"
+};
+
+function seed(s){let x=Math.sin(s+1)*10000;return x-Math.floor(x)}
+function ri(lo,hi,s){return lo+Math.floor(seed(s)*(hi-lo+1))}
+
+function buildDataset(startDate, endDate){
+  const rows=[];
+  let d=new Date(startDate);
+  const end=new Date(endDate);
+  let si=0;
+  while(d<=end){
+    const ds=d.toISOString().slice(0,10);
+    CITIES.forEach((city,ci)=>{
+      WIDGETS.forEach((wt,wi)=>{
+        // not every widget appears in every city on every day
+        if(seed(si+ci*7+wi*13+31)>0.55) return;
+        const pos=ri(0,4,si+ci+wi);
+        const baseImp=ri(800,12000,si+ci*11+wi*17);
+        const cityMult=[2.5,2.2,2.0,1.9,1.7,1.5,1.2,1.1,1.0,.9,.85,.8,.75,.7,.65,.6,.55,.5][ci]||1;
+        const widgetMult=[2.0,1.9,1.5,1.4,1.3,1.2,1.0,0.9,0.8,0.7,0.65,0.6,0.55,0.5,0.45,0.4][wi]||1;
+        const imp=Math.round(baseImp*cityMult*widgetMult);
+        const impU=Math.round(imp*(.55+seed(si+ci+wi+99)*.25));
+        const clickRate=.02+seed(si+wi*3+ci*7)*0.10;
+        const clk=Math.round(imp*clickRate);
+        const clkU=Math.round(impU*clickRate*(.9+seed(si+ci+wi+200)*.2));
+        rows.push({
+          dt:ds,
+          city_name:city,
+          widget_title:wt,
+          link:LINKS[wt]||'',
+          widget_position:pos,
+          impressions:imp,
+          clicks:clk,
+          ctr_pct:imp?+(clk/imp*100).toFixed(2):0,
+          impressions_unique:impU,
+          clicks_unique:clkU,
+          ctr_unique_pct:impU?+(clkU/impU*100).toFixed(2):0
+        });
+        si++;
+      });
+    });
+    d.setDate(d.getDate()+1);
+  }
+  return rows;
+}
+
+// ── State ─────────────────────────────────────────────────────────────────────
+let ALL_DATA=[], FILTERED=[];
+
+function today(){return new Date().toISOString().slice(0,10)}
+function daysAgo(n){let d=new Date();d.setDate(d.getDate()-n);return d.toISOString().slice(0,10)}
+
+function initDateInputs(){
+  document.getElementById('startDate').value=daysAgo(13);
+  document.getElementById('endDate').value=daysAgo(1);
+}
+
+function populateSidebar(){
+  const cities=[...new Set(ALL_DATA.map(r=>r.city_name))].sort();
+  const widgets=[...new Set(ALL_DATA.map(r=>r.widget_title))].sort();
+  const cs=document.getElementById('cityFilter');
+  const ws=document.getElementById('widgetFilter');
+  cs.innerHTML=cities.map(c=>`<option value="${c}">${c}</option>`).join('');
+  ws.innerHTML=widgets.map(w=>`<option value="${w}">${w}</option>`).join('');
+}
+
+function getSelectedOptions(id){
+  return Array.from(document.getElementById(id).selectedOptions).map(o=>o.value);
+}
+
+function applyFilters(){
+  const sc=getSelectedOptions('cityFilter');
+  const sw=getSelectedOptions('widgetFilter');
+  FILTERED=ALL_DATA.filter(r=>
+    (!sc.length||sc.includes(r.city_name))&&
+    (!sw.length||sw.includes(r.widget_title))
+  );
+  updateAll();
+}
+
+function loadData(){
+  const start=document.getElementById('startDate').value;
+  const end=document.getElementById('endDate').value;
+  ALL_DATA=buildDataset(start,end);
+  FILTERED=[...ALL_DATA];
+  populateSidebar();
+  updateAll();
+}
+
+// ── Aggregation helpers ───────────────────────────────────────────────────────
+function groupBy(data,keys,aggs){
+  const map=new Map();
+  data.forEach(r=>{
+    const k=keys.map(k=>r[k]).join('||');
+    if(!map.has(k)){const o={};keys.forEach(k2=>o[k2]=r[k2]);aggs.forEach(a=>{o[a.out]=0});map.set(k,o)}
+    const o=map.get(k);
+    aggs.forEach(a=>o[a.out]+=r[a.in]);
+  });
+  const rows=[...map.values()];
+  rows.forEach(r=>{
+    r.ctr_pct=r.impressions?+(r.clicks/r.impressions*100).toFixed(2):0;
+    r.ctr_unique_pct=r.impressions_unique?+(r.clicks_unique/r.impressions_unique*100).toFixed(2):0;
+  });
+  return rows;
+}
+const AGGS=[
+  {in:'impressions',out:'impressions'},{in:'clicks',out:'clicks'},
+  {in:'impressions_unique',out:'impressions_unique'},{in:'clicks_unique',out:'clicks_unique'}
+];
+function sortBy(arr,col,asc=false){return [...arr].sort((a,b)=>asc?a[col]-b[col]:b[col]-a[col])}
+
+// ── KPIs ──────────────────────────────────────────────────────────────────────
+function updateKPIs(){
+  const imp=FILTERED.reduce((s,r)=>s+r.impressions,0);
+  const clk=FILTERED.reduce((s,r)=>s+r.clicks,0);
+  const uimp=FILTERED.reduce((s,r)=>s+r.impressions_unique,0);
+  const uclk=FILTERED.reduce((s,r)=>s+r.clicks_unique,0);
+  const cities=new Set(FILTERED.map(r=>r.city_name)).size;
+  const widgets=new Set(FILTERED.map(r=>r.widget_title)).size;
+  document.getElementById('kpi-imp').textContent=fmt(imp);
+  document.getElementById('kpi-clk').textContent=fmt(clk);
+  document.getElementById('kpi-ctr').textContent=(imp?+(clk/imp*100).toFixed(2):0)+'%';
+  document.getElementById('kpi-uimp').textContent=fmt(uimp);
+  document.getElementById('kpi-uctr').textContent=(uimp?+(uclk/uimp*100).toFixed(2):0)+'%';
+  document.getElementById('kpi-cw').textContent=cities+' / '+widgets;
+  const s=document.getElementById('startDate').value;
+  const e=document.getElementById('endDate').value;
+  document.getElementById('dateRangeLabel').textContent=
+    `Date range: ${s} → ${e}  ·  Last refreshed: ${new Date().toLocaleString('en-IN')}`;
+}
+function fmt(n){if(n>=1e6)return(n/1e6).toFixed(2)+'M';if(n>=1e3)return(n/1e3).toFixed(1)+'K';return n.toString()}
+
+// ── Plotly helpers ────────────────────────────────────────────────────────────
+const BG='rgba(0,0,0,0)',FONT={color:'#8B8FA8',size:11};
+const LAY={paper_bgcolor:BG,plot_bgcolor:BG,font:FONT,margin:{t:16,b:36,l:10,r:10},
+  legend:{bgcolor:'rgba(0,0,0,0)',font:{color:'#FAFAFA',size:11}},
+  xaxis:{gridcolor:'#2A2D3A',color:'#8B8FA8'},
+  yaxis:{gridcolor:'#2A2D3A',color:'#8B8FA8'}
+};
+const CFG={responsive:true,displayModeBar:false};
+function merge(a,b){return Object.assign({},a,b)}
+
+// ── Daily Trend ───────────────────────────────────────────────────────────────
+function drawTrend(){
+  const daily=groupBy(FILTERED,['dt'],AGGS);
+  daily.sort((a,b)=>a.dt.localeCompare(b.dt));
+  const x=daily.map(r=>r.dt);
+
+  Plotly.react('chart-trend-main',[
+    {x,y:daily.map(r=>r.impressions),name:'Impressions',type:'bar',marker:{color:'#FC8019',opacity:.85}},
+    {x,y:daily.map(r=>r.clicks),name:'Clicks',type:'bar',marker:{color:'#3D9BFF',opacity:.85}},
+    {x,y:daily.map(r=>r.ctr_pct),name:'CTR (%)',yaxis:'y2',mode:'lines+markers',
+     line:{color:'#FFD700',width:2},marker:{size:5}}
+  ],merge(LAY,{barmode:'group',
+    yaxis:{title:'Count',gridcolor:'#2A2D3A',color:'#8B8FA8'},
+    yaxis2:{title:'CTR (%)',overlaying:'y',side:'right',showgrid:false,color:'#FFD700'},
+    height:340}),CFG);
+
+  Plotly.react('chart-trend-unique',[
+    {x,y:daily.map(r=>r.impressions_unique),name:'Uniq Impressions',type:'bar',marker:{color:'#FC8019',opacity:.7}},
+    {x,y:daily.map(r=>r.clicks_unique),name:'Uniq Clicks',type:'bar',marker:{color:'#3D9BFF',opacity:.7}},
+    {x,y:daily.map(r=>r.ctr_unique_pct),name:'Uniq CTR (%)',yaxis:'y2',mode:'lines+markers',
+     line:{color:'#00E5A0',width:2},marker:{size:5}}
+  ],merge(LAY,{barmode:'group',
+    yaxis:{title:'Unique Count',gridcolor:'#2A2D3A',color:'#8B8FA8'},
+    yaxis2:{title:'Uniq CTR (%)',overlaying:'y',side:'right',showgrid:false,color:'#00E5A0'},
+    height:340}),CFG);
+}
+
+// ── Widget Level ──────────────────────────────────────────────────────────────
+function drawWidget(){
+  const wdf=sortBy(groupBy(FILTERED,['widget_title'],AGGS),'impressions').slice(0,20);
+  const wdfCtr=sortBy(groupBy(FILTERED,['widget_title'],AGGS),'ctr_pct').slice(0,20);
+
+  Plotly.react('chart-widget-imp',[{
+    x:wdf.map(r=>r.impressions),y:wdf.map(r=>r.widget_title),type:'bar',orientation:'h',
+    marker:{color:wdf.map(r=>r.ctr_pct),colorscale:[[0,'#1A1D27'],[1,'#FC8019']],showscale:true,
+      colorbar:{title:'CTR %',tickfont:{color:'#8B8FA8'},titlefont:{color:'#8B8FA8'}}},
+    text:wdf.map(r=>fmt(r.impressions)),textposition:'outside',textfont:{color:'#FAFAFA',size:10}
+  }],merge(LAY,{height:420,xaxis:{title:'Impressions'},yaxis:{autorange:'reversed'}}),CFG);
+
+  Plotly.react('chart-widget-ctr',[{
+    x:wdfCtr.map(r=>r.ctr_pct),y:wdfCtr.map(r=>r.widget_title),type:'bar',orientation:'h',
+    marker:{color:wdfCtr.map(r=>r.clicks),colorscale:[[0,'#1A1D27'],[1,'#3D9BFF']],showscale:true,
+      colorbar:{title:'Clicks',tickfont:{color:'#8B8FA8'},titlefont:{color:'#8B8FA8'}}},
+    text:wdfCtr.map(r=>r.ctr_pct+'%'),textposition:'outside',textfont:{color:'#FAFAFA',size:10}
+  }],merge(LAY,{height:420,xaxis:{title:'CTR (%)'},yaxis:{autorange:'reversed'}}),CFG);
+
+  drawWidgetTrend();
+  renderTable('tbl-widget',
+    sortBy(groupBy(FILTERED,['widget_title'],AGGS),'impressions'),
+    ['widget_title','impressions','clicks','ctr_pct','impressions_unique','clicks_unique','ctr_unique_pct'],
+    ['Widget','Impressions','Clicks','CTR (%)','Uniq Impr','Uniq Clicks','Uniq CTR (%)']
+  );
+}
+
+function drawWidgetTrend(){
+  const metric=document.querySelector('input[name=wmetric]:checked')?.value||'impressions';
+  const top10=sortBy(groupBy(FILTERED,['widget_title'],AGGS),'impressions').slice(0,10).map(r=>r.widget_title);
+  const sub=FILTERED.filter(r=>top10.includes(r.widget_title));
+  const trend=groupBy(sub,['dt','widget_title'],AGGS);
+  trend.sort((a,b)=>a.dt.localeCompare(b.dt));
+  const series={};
+  trend.forEach(r=>{
+    if(!series[r.widget_title])series[r.widget_title]={x:[],y:[]};
+    series[r.widget_title].x.push(r.dt);
+    series[r.widget_title].y.push(r[metric]);
+  });
+  const traces=Object.entries(series).map(([name,d])=>({
+    x:d.x,y:d.y,name,mode:'lines+markers',line:{width:2},marker:{size:4}
+  }));
+  Plotly.react('chart-widget-trend',traces,merge(LAY,{height:320,
+    yaxis:{title:metric,gridcolor:'#2A2D3A',color:'#8B8FA8'},
+    xaxis:{gridcolor:'#2A2D3A',color:'#8B8FA8'}}),CFG);
+}
+
+// ── Position Level ────────────────────────────────────────────────────────────
+function drawPosition(){
+  const pos=sortBy(groupBy(FILTERED,['widget_position'],AGGS),'widget_position',true);
+
+  Plotly.react('chart-pos-imp',[{
+    x:pos.map(r=>r.widget_position),y:pos.map(r=>r.impressions),type:'bar',
+    marker:{color:pos.map(r=>r.ctr_pct),colorscale:[[0,'#1A1D27'],[1,'#FC8019']],showscale:true,
+      colorbar:{title:'CTR %',tickfont:{color:'#8B8FA8'},titlefont:{color:'#8B8FA8'}}},
+    text:pos.map(r=>fmt(r.impressions)),textposition:'outside',textfont:{color:'#FAFAFA',size:10}
+  }],merge(LAY,{height:340,xaxis:{title:'Position (index)',dtick:1},yaxis:{title:'Impressions'}}),CFG);
+
+  Plotly.react('chart-pos-ctr',[
+    {x:pos.map(r=>r.widget_position),y:pos.map(r=>r.ctr_pct),name:'CTR (%)',
+     mode:'lines+markers',line:{color:'#FC8019',width:2},marker:{size:7}},
+    {x:pos.map(r=>r.widget_position),y:pos.map(r=>r.ctr_unique_pct),name:'Uniq CTR (%)',
+     mode:'lines+markers',line:{color:'#00E5A0',width:2},marker:{size:7}}
+  ],merge(LAY,{height:340,xaxis:{title:'Position (index)',dtick:1},yaxis:{title:'CTR (%)'}}),CFG);
+
+  // Heatmap
+  const top20w=sortBy(groupBy(FILTERED,['widget_title'],AGGS),'impressions').slice(0,20).map(r=>r.widget_title);
+  const sub=FILTERED.filter(r=>top20w.includes(r.widget_title));
+  const heat=groupBy(sub,['widget_title','widget_position'],AGGS);
+  const allPos=[...new Set(heat.map(r=>r.widget_position))].sort((a,b)=>a-b);
+  const zData=top20w.map(w=>allPos.map(p=>{
+    const row=heat.find(r=>r.widget_title===w&&r.widget_position===p);
+    return row?row.impressions:0;
+  }));
+  Plotly.react('chart-pos-heat',[{
+    z:zData,x:allPos.map(p=>'Pos '+p),y:top20w,type:'heatmap',
+    colorscale:'Oranges',showscale:true,
+    colorbar:{tickfont:{color:'#8B8FA8'},titlefont:{color:'#8B8FA8'}}
+  }],merge(LAY,{height:460,margin:{t:16,b:40,l:180,r:60},
+    xaxis:{title:'Position'},yaxis:{autorange:'reversed'}}),CFG);
+
+  renderTable('tbl-pos',pos,
+    ['widget_position','impressions','clicks','ctr_pct','impressions_unique','clicks_unique','ctr_unique_pct'],
+    ['Position','Impressions','Clicks','CTR (%)','Uniq Impr','Uniq Clicks','Uniq CTR (%)']
+  );
+}
+
+// ── City Level ────────────────────────────────────────────────────────────────
+function drawCity(){
+  const city=sortBy(groupBy(FILTERED,['city_name'],AGGS),'impressions').slice(0,20);
+  const cityCtr=sortBy(groupBy(FILTERED,['city_name'],AGGS),'ctr_pct').slice(0,20);
+
+  Plotly.react('chart-city-imp',[{
+    x:city.map(r=>r.impressions),y:city.map(r=>r.city_name),type:'bar',orientation:'h',
+    marker:{color:city.map(r=>r.ctr_pct),colorscale:[[0,'#1A1D27'],[1,'#FC8019']],showscale:true,
+      colorbar:{title:'CTR %',tickfont:{color:'#8B8FA8'},titlefont:{color:'#8B8FA8'}}},
+    text:city.map(r=>fmt(r.impressions)),textposition:'outside',textfont:{color:'#FAFAFA',size:10}
+  }],merge(LAY,{height:540,xaxis:{title:'Impressions'},yaxis:{autorange:'reversed'},margin:{t:16,b:40,l:120,r:60}}),CFG);
+
+  Plotly.react('chart-city-ctr',[{
+    x:cityCtr.map(r=>r.ctr_pct),y:cityCtr.map(r=>r.city_name),type:'bar',orientation:'h',
+    marker:{color:cityCtr.map(r=>r.clicks),colorscale:[[0,'#1A1D27'],[1,'#3D9BFF']],showscale:true,
+      colorbar:{title:'Clicks',tickfont:{color:'#8B8FA8'},titlefont:{color:'#8B8FA8'}}},
+    text:cityCtr.map(r=>r.ctr_pct+'%'),textposition:'outside',textfont:{color:'#FAFAFA',size:10}
+  }],merge(LAY,{height:540,xaxis:{title:'CTR (%)'},yaxis:{autorange:'reversed'},margin:{t:16,b:40,l:120,r:60}}),CFG);
+
+  drawCityTrend();
+  renderTable('tbl-city',
+    sortBy(groupBy(FILTERED,['city_name'],AGGS),'impressions'),
+    ['city_name','impressions','clicks','ctr_pct','impressions_unique','clicks_unique','ctr_unique_pct'],
+    ['City','Impressions','Clicks','CTR (%)','Uniq Impr','Uniq Clicks','Uniq CTR (%)']
+  );
+}
+
+function drawCityTrend(){
+  const metric=document.querySelector('input[name=cmetric]:checked')?.value||'impressions';
+  const top5=sortBy(groupBy(FILTERED,['city_name'],AGGS),'impressions').slice(0,5).map(r=>r.city_name);
+  const sub=FILTERED.filter(r=>top5.includes(r.city_name));
+  const trend=groupBy(sub,['dt','city_name'],AGGS);
+  trend.sort((a,b)=>a.dt.localeCompare(b.dt));
+  const series={};
+  trend.forEach(r=>{
+    if(!series[r.city_name])series[r.city_name]={x:[],y:[]};
+    series[r.city_name].x.push(r.dt);
+    series[r.city_name].y.push(r[metric]);
+  });
+  const traces=Object.entries(series).map(([name,d])=>({
+    x:d.x,y:d.y,name,mode:'lines+markers',line:{width:2},marker:{size:4}
+  }));
+  Plotly.react('chart-city-trend',traces,merge(LAY,{height:320,
+    yaxis:{title:metric,gridcolor:'#2A2D3A',color:'#8B8FA8'},
+    xaxis:{gridcolor:'#2A2D3A',color:'#8B8FA8'}}),CFG);
+}
+
+// ── Table renderer ────────────────────────────────────────────────────────────
+function renderTable(id,data,cols,headers){
+  const el=document.getElementById(id);
+  const ctrCols=['ctr_pct','ctr_unique_pct'];
+  el.innerHTML=`<thead><tr>${headers.map(h=>`<th>${h}</th>`).join('')}</tr></thead><tbody>`+
+    data.slice(0,200).map(r=>`<tr>${cols.map(c=>{
+      const v=r[c];
+      if(ctrCols.includes(c))return`<td><span class="badge badge-green">${v}%</span></td>`;
+      if(c==='impressions'||c==='impressions_unique')return`<td><b style="color:#FC8019">${typeof v==='number'?v.toLocaleString():v}</b></td>`;
+      if(c==='clicks'||c==='clicks_unique')return`<td><span style="color:#3D9BFF">${typeof v==='number'?v.toLocaleString():v}</span></td>`;
+      return`<td>${typeof v==='number'?v.toLocaleString():v}</td>`;
+    }).join('')}</tr>`).join('')+'</tbody>';
+}
+
+// ── Raw Data tab ──────────────────────────────────────────────────────────────
+function renderRaw(){
+  const q=(document.getElementById('rawSearch').value||'').toLowerCase();
+  const data=FILTERED.filter(r=>
+    !q||r.widget_title.toLowerCase().includes(q)||r.city_name.toLowerCase().includes(q)
+  );
+  renderTable('tbl-raw',data,
+    ['dt','city_name','widget_title','widget_position','impressions','clicks','ctr_pct',
+     'impressions_unique','clicks_unique','ctr_unique_pct'],
+    ['Date','City','Widget','Pos','Impressions','Clicks','CTR (%)','Uniq Impr','Uniq Clicks','Uniq CTR (%)']
+  );
+}
+
+function downloadCSV(){
+  const headers=['dt','city_name','widget_title','link','widget_position',
+    'impressions','clicks','ctr_pct','impressions_unique','clicks_unique','ctr_unique_pct'];
+  const lines=[headers.join(','),...FILTERED.map(r=>headers.map(h=>r[h]).join(','))];
+  const a=document.createElement('a');
+  a.href='data:text/csv;charset=utf-8,'+encodeURIComponent(lines.join('\n'));
+  a.download='im_dedicated_widgets.csv';a.click();
+}
+
+// ── Tab switching ─────────────────────────────────────────────────────────────
+function switchTab(name,el){
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('panel-'+name).classList.add('active');
+  // lazy-draw for performance
+  if(name==='trend')drawTrend();
+  if(name==='widget')drawWidget();
+  if(name==='position')drawPosition();
+  if(name==='city')drawCity();
+  if(name==='raw')renderRaw();
+}
+
+// ── Master update ─────────────────────────────────────────────────────────────
+function updateAll(){
+  updateKPIs();
+  drawTrend();
+  // other tabs drawn lazily on click
+}
+
+// ── Auto-refresh every 30 min ─────────────────────────────────────────────────
+setInterval(()=>{loadData()}, 30*60*1000);
+
+// ── Boot ──────────────────────────────────────────────────────────────────────
+initDateInputs();
+loadData();
+
+// re-load on date change
+['startDate','endDate'].forEach(id=>{
+  document.getElementById(id).addEventListener('change',loadData);
+});
+</script>
+</body>
+</html>

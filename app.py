@@ -3,6 +3,8 @@ import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 from datetime import date, timedelta
+from cryptography.hazmat.primitives.serialization import load_pem_private_key
+from cryptography.hazmat.backends import default_backend
 import snowflake.connector
 
 st.set_page_config(
@@ -12,15 +14,29 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
-# ── Snowflake connection ──────────────────────────────────────────────────────
+# ── Snowflake connection (key-pair auth) ──────────────────────────────────────
 
 @st.cache_resource(ttl=300)
 def get_connection():
     cfg = st.secrets["snowflake"]
+    private_key_pem = cfg["private_key"].encode()
+    private_key = load_pem_private_key(
+        private_key_pem,
+        password=None,
+        backend=default_backend(),
+    )
+    from cryptography.hazmat.primitives.serialization import (
+        Encoding, PrivateFormat, NoEncryption
+    )
+    private_key_der = private_key.private_bytes(
+        encoding=Encoding.DER,
+        format=PrivateFormat.PKCS8,
+        encryption_algorithm=NoEncryption(),
+    )
     return snowflake.connector.connect(
         account=cfg["account"],
         user=cfg["user"],
-        password=cfg["password"],
+        private_key=private_key_der,
         warehouse=cfg["warehouse"],
         role=cfg.get("role", ""),
         database=cfg.get("database", "STREAMS"),
